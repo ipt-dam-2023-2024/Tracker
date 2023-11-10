@@ -1,11 +1,16 @@
 package ipt.dam.mapasosm
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
+import android.location.Location
+import android.location.LocationListener
+import android.location.LocationManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -19,10 +24,12 @@ import org.osmdroid.views.overlay.Polyline
 import org.osmdroid.views.overlay.compass.CompassOverlay
 
 
-class MainActivity : AppCompatActivity() {
-
+class MainActivity : AppCompatActivity(), LocationListener {
+    private lateinit var locationManager: LocationManager
     private val REQUEST_PERMISSIONS_REQUEST_CODE = 1
     private lateinit var map : MapView
+    private lateinit var startMarker:Marker
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,6 +45,10 @@ class MainActivity : AppCompatActivity() {
             Manifest.permission.READ_EXTERNAL_STORAGE
         ))
 
+        locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+
+        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 5f, this)
+
         Configuration.getInstance().setUserAgentValue(this.getPackageName())
         map = findViewById(R.id.map)
         map.setTileSource(TileSourceFactory.MAPNIK)
@@ -47,13 +58,22 @@ class MainActivity : AppCompatActivity() {
         var compassOverlay = CompassOverlay(this, map)
         compassOverlay.enableCompass()
         map.overlays.add(compassOverlay)
-        var point = GeoPoint(39.60068, -8.38967)
-        var startMarker = Marker(map)
+
+        startMarker = Marker(map)
+
+
+    }
+
+    override fun onLocationChanged(location: Location) {
+        map.overlays.remove(startMarker)
+
+        var point = GeoPoint( location.latitude, location.longitude)
+        startMarker = Marker(map)
         startMarker.position = point
-        startMarker.infoWindow = MarkerWindow(map, this)
         startMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
         map.overlays.add(startMarker)
 
+        Log.i("gps", "" +location.latitude+ ":" +location.longitude)
         Handler(Looper.getMainLooper()).postDelayed({
             map.controller.setCenter(point)
         }, 1000) // espera 1 Segundo para centrar o mapa
